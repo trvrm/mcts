@@ -11,30 +11,26 @@
 """
 
 import time
-from typing import Optional, List, Protocol, Any
+from typing import Optional, List, Protocol, Any, Dict
 from math import sqrt, log
 import random
 
 from .common import Result, Player, other_player
 
-#
+
 class StateProtocol(Protocol):
     def apply(self, command: Any) -> "StateProtocol":
         ...
 
-    def playout(self) -> Result:
-        ...
-
     player: Player
-    commands: List
     result: Result
-    command: Any
+    commands: List
+
 
 class MCTSException(Exception):
     pass
- 
 
-# This is going to be generic on command, state
+
 class Node:
     "State is immutable, nodes are not"
 
@@ -43,40 +39,75 @@ class Node:
         assert parent is not self
         self.parent = parent
         self.state = state
-        # we may want this to be a set?
-        self.children: List[Node] = []
+        self.children: Dict[Any, Node] = {}
         self.playouts = 0
         self.wins = 0.0
-
-        self.depth: int = 0 if self.parent is None else 1 + self.parent.depth
 
     def __repr__(self) -> str:
         ratio = self.ratio
         if ratio is not None:
             ratio = round(ratio, 2)
+
         return f"Node(depth={self.depth},wins={self.wins},playouts={self.playouts}, ratio={ratio}, children={len(self.children)})"
 
     @property
     def is_leaf(self) -> bool:
         "'leaf' is any node that has a potential child from which no playout has been run."
+
         if len(self.children) < len(self.state.commands):
             return True
 
-        if any(node.playouts == 0 for node in self.children):
-            assert 0, str([c.playouts for c in self.children])
-            assert 0, f"Does this ever happen? {self}"
+        if any(child.playouts == 0 for command, child in self.children.items()):
+            # We always run a playout when we create a new node.
+            assert 0, str([child.playouts for command, child in self.children.items()])
 
-            return True
         return False
 
+    @property
     def size(self) -> int:
-        return 1 + sum(child.size() for child in self.children)
+        return 1 + sum(child.size for command, child in self.children.items())
+
+    @property
+    def depth(self) -> int:
+        "It would be better to compute this once during backprop"
+        return 1 + max(
+            (child.depth for command, child in self.children.items()), default=0
+        )
 
     @property
     def ratio(self) -> float:
         if self.wins == 0:
             return 0
         return self.wins / self.playouts
+
+    def select(self) -> "Node":
+        """
+        Given a node return a node that is a leaf.
+
+        Here is where we do explore vs exploit.
+
+        If this node is a leaf we return it, otherwise we pick a child
+        and call select on it
+        """
+        if self.is_leaf:
+            return self
+
+        # I'm not a leaf. Therefore the number of
+        # children I have is equal to the number of legal moves
+        assert len(self.children) == len(self.state.commands)
+
+        # we can't go down any further, but this node can't be expanded.
+        if len(self.state.commands) == 0:
+            assert self.state.result != Result.INPROGRESS
+
+            assert len(self.children) == 0
+            return self
+
+        for child in self.children.values():
+            assert child.parent is self
+
+        highest_scoring_child = max(self.children.values(), key=uct_score)
+        return highest_scoring_child.select()
 
     def expand(self) -> "Node":
         "create a new child state from this node"
@@ -88,69 +119,40 @@ class Node:
 
         assert len(self.state.commands) > 0
         assert self.is_leaf
+
         assert len(self.children) < len(self.state.commands)
 
         # pick a command that hasn't been used already
-        possible = set(self.state.commands)  # available legal commands
+        available = list(set(self.state.commands) - set(self.children.keys()))
 
-        used = set(
-            child.state.command for child in self.children
-        )  # commands that we've already expanded into the tree
-
-        available = list(possible - used)
         command = random.choice(available)
 
         child: Node = Node(
             state=self.state.apply(command),
             parent=self,
         )
-        self.children.append(child)
+
+        self.children[command] = child
 
         return child
 
-    def best(self) -> "Node":
+    def best(self) -> Any:
         """
         Wikipedia says
         "the move with the most simulations made (i.e. the highest denominator)
         is chosen as the final answer."
         """
-        assert len(self.children)
-        # if len(root.children)==0:
-        #     return None # we haven't explored any commands from this node
 
-        return max(self.children, key=lambda n: n.playouts)
-
-    def select(self) -> "Node":
-        """
-        given a node return a node that is a leaf.
-        Implement explore vs exploit here!
-
-        If this node is a leaf we return it, otherwise we pick a child
-        and call select on it
-        """
-        if self.is_leaf:
-            return self
-
-        # ok, I'm not a leaf. Therefore the number of
-        # children I have is equal to the number of legal moves
-        assert len(self.children) == len(self.state.commands)
-
-        # we can't go down any further, but this node can't be expanded.
-        if len(self.state.commands) == 0:
-            assert self.state.result != Result.INPROGRESS
-            assert len(self.children) == 0
-            return self
-
-        for child in self.children:
-            assert child.parent is self
-
-        scores = [uct_score(child) for child in self.children]
-        index = scores.index(max(scores))
-
-        return self.children[index].select()
+        commands = self.children.keys()
+        return max(commands, key=lambda command: self.children[command].playouts)
 
 
 def uct_score(node: Node) -> float:
+    """
+    UCT is 'Upper Confidence Bound Applied to Trees'.
+
+    See https://en.wikipedia.org/wiki/Monte_Carlo_tree_search#Exploration_and_exploitation
+    """
     assert node.parent is not None
     # choose in each node of the game tree the move for which the expression UCT has the highest value
     s_i = node.playouts
@@ -164,12 +166,7 @@ def uct_score(node: Node) -> float:
     return w_i / s_i + c * sqrt(log(s_p) / s_i)
 
 
-def backprop(node: Node, result: Result) -> None:
-
-    """node.state.player is the player to play, so the player who has just played the move
-    is the one we care about
-
-    """
+def update_node(node: Node, result: Result) -> None:
     assert result in (Result.PLAYER1, Result.PLAYER2, Result.DRAW)
 
     # the player who just played the move that got us to this state
@@ -186,18 +183,29 @@ def backprop(node: Node, result: Result) -> None:
 
     node.playouts += 1
 
+
+def backprop(node: Node, result: Result) -> None:
+
+    """node.state.player is the player to play, so the player who has just played the move
+    is the one we care about
+
+    """
+    update_node(node, result)
+
     if node.parent is not None:
         backprop(node.parent, result)
+
+
+def playout(node) -> Result:
+    state = node.state
+    while state.result == Result.INPROGRESS:
+        command = random.choice(state.commands)
+        state = state.apply(command)
+    return state.result
 
 
 def mcts(root: Node) -> None:
     leaf = root.select()
     c = leaf.expand()
-    result = c.state.playout()
+    result = playout(c)
     backprop(c, result)
-    
-    
-def learn(root:Node, seconds:float)->None:
-    end=time.time()+seconds
-    while time.time()<end:
-        mcts(root)
