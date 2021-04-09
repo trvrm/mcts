@@ -44,10 +44,7 @@ class Node(Generic[StateType]):
 
     "State is immutable, nodes are not"
 
-    def __init__(self, state: StateType, parent: Optional["Node"] = None) -> None:
-
-        assert parent is not self
-        self.parent = parent
+    def __init__(self, state: StateType) -> None:
         self.state = state
         self.children: Dict[Any, Node] = {}
         self.playouts = 0
@@ -89,45 +86,36 @@ class Node(Generic[StateType]):
             return 0
         return self.wins / self.playouts
 
-    def select(self) -> "Node":
+    def select(self) -> List["Node"]:
         """
         Given a node return a node that is a leaf.
 
-        Here is where we do explore vs exploit.
-
         If this node is a leaf we return it, otherwise we pick a child
         and call select on it
+
+        We return the full path from self to the leaf, to make backprop easier.
+
+        Here is where we do explore vs exploit.
+
         """
         if self.is_leaf:
-            return self
-
-        # I'm not a leaf. Therefore the number of
-        # children I have is equal to the number of legal moves
-        assert len(self.children) == len(self.state.commands)
-
-        # we can't go down any further, but this node can't be expanded.
+            return [self]
         if len(self.state.commands) == 0:
-            assert self.state.result != Result.INPROGRESS
-            assert len(self.children) == 0
-            return self
+            # This is a terminal state
+            return [self]
 
-        for child in self.children.values():
-            assert child.parent is self
+        highest_scoring_child = max(
+            self.children.values(), key=lambda node: node.uct_score(self.playouts)
+        )
 
-        highest_scoring_child = max(self.children.values(), key=uct_score)
-        return highest_scoring_child.select()
+        return [self] + highest_scoring_child.select()
 
     def expand(self) -> "Node":
         "create a new child state from this node"
 
-        if self.state.result != Result.INPROGRESS:
-            # can't really expand any more, so we'll just
-            # backprop the value of the finished game
-            return self
-
+        assert self.state.result == Result.INPROGRESS
         assert len(self.state.commands) > 0
         assert self.is_leaf
-
         assert len(self.children) < len(self.state.commands)
 
         # pick a command that hasn't been used already
@@ -135,10 +123,7 @@ class Node(Generic[StateType]):
 
         command = random.choice(available)
 
-        child: Node = Node(
-            state=self.state.apply(command),
-            parent=self,
-        )
+        child: Node = Node(state=self.state.apply(command))
 
         self.children[command] = child
 
@@ -154,24 +139,26 @@ class Node(Generic[StateType]):
         commands = self.children.keys()
         return max(commands, key=lambda command: self.children[command].playouts)
 
+    def uct_score(self, parent_playouts: int) -> float:
+        """
+        UCT is 'Upper Confidence Bound Applied to Trees'.
 
-def uct_score(node: Node) -> float:
-    """
-    UCT is 'Upper Confidence Bound Applied to Trees'.
+        See https://en.wikipedia.org/wiki/Monte_Carlo_tree_search#Exploration_and_exploitation
 
-    See https://en.wikipedia.org/wiki/Monte_Carlo_tree_search#Exploration_and_exploitation
-    """
-    assert node.parent is not None
-    # choose in each node of the game tree the move for which the expression UCT has the highest value
-    s_i = node.playouts
-    s_p = node.parent.playouts
-    assert node.parent is not None, "UCT requires node has a parent"
-    assert s_p > 0, "How come parent hasn't had any playouts?"
-    w_i = node.wins
-    c = sqrt(2)  # exploration parameter
+        and
 
-    # https://medium.com/@quasimik/monte-carlo-tree-search-applied-to-letterpress-34f41c86e238
-    return w_i / s_i + c * sqrt(log(s_p) / s_i)
+        https://medium.com/@quasimik/monte-carlo-tree-search-applied-to-letterpress-34f41c86e238
+
+        """
+        assert parent_playouts > 0
+
+        # explore-vs-exploit parameter
+        C = sqrt(2)
+
+        explore = self.wins / self.playouts
+        exploit = C * sqrt(log(parent_playouts) / self.playouts)
+
+        return explore + exploit
 
 
 def update_node(node: Node, result: Result) -> None:
@@ -192,16 +179,9 @@ def update_node(node: Node, result: Result) -> None:
     node.playouts += 1
 
 
-def backprop(node: Node, result: Result) -> None:
-
-    """node.state.player is the player to play, so the player who has just played the move
-    is the one we care about
-
-    """
-    update_node(node, result)
-
-    if node.parent is not None:
-        backprop(node.parent, result)
+def backprop(path: List[Node], result: Result) -> None:
+    for node in path:
+        update_node(node, result)
 
 
 def playout(node) -> Result:
@@ -212,8 +192,21 @@ def playout(node) -> Result:
     return state.result
 
 
+def expand(path: List[Node]) -> List[Node]:
+    "Expand if possible, modify path to include new node"
+    leaf = path[-1]
+
+    if leaf.state.commands:
+        path.append(leaf.expand())
+    return path
+
+
+def select(node: Node) -> List[Node]:
+    return node.select()
+
+
 def mcts(root: Node) -> None:
-    leaf = root.select()
-    c = leaf.expand()
-    result = playout(c)
-    backprop(c, result)
+    path = select(root)
+    path = expand(path)
+    result = playout(path[-1])
+    backprop(path, result)
