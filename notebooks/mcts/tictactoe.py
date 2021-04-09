@@ -73,12 +73,15 @@ class State:
 
         self.result = _result(self._m)
 
-        self.commands = [
-            Command(j, i)
-            for j in range(SIZE)
-            for i in range(SIZE)
-            if self._m[j, i] == 0
-        ]
+        if self.result == Result.INPROGRESS:
+            self.commands = [
+                Command(j, i)
+                for j in range(SIZE)
+                for i in range(SIZE)
+                if self._m[j, i] == 0
+            ]
+        else:
+            self.commands = []
 
     def __repr__(self) -> str:
         d = {0: " ", -1: "X", 1: "O"}
