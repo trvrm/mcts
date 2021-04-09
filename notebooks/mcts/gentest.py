@@ -1,28 +1,44 @@
 """
-    clearly i don't understand python generics
+    Python generics
 """
-from typing import Protocol
+from typing import Protocol, Any, List, TypeVar, Generic
+
+from .common import Result, Player, other_player
 
 
-class StateProto(Protocol):
-    def meth(self) -> int:
-        pass
+class StateProtocol(Protocol):
+    """
+    I haven't yet figured out how to make *this* class generic on 'Command'
+    """
 
-    class Command:
-        pass
+    def apply(self, command: Any) -> "StateProtocol":
+        ...
+
+    player: Player
+    result: Result
+    commands: List
 
 
-class Node:
-    def __init__(self, state: StateProto) -> None:
+StateType = TypeVar("StateType", bound=StateProtocol)
+
+
+class Node(Generic[StateType]):
+    def __init__(self, state: StateType) -> None:
         self.state = state
 
     def test(self) -> int:
-        return 1 + self.state.meth()
+
+        return 1 + len(self.state.commands)
 
 
 class MyState:
-    def meth(self) -> int:
-        return 42
+    def __init__(self, player: Player, result: Result) -> None:
+        self.commands: List = []
+        self.player = Player.ONE
+        self.result = Result.INPROGRESS
+
+    def apply(self, command: Any) -> "MyState":
+        return MyState(other_player(self.player), Result.INPROGRESS)
 
 
 class MyNotState:
@@ -30,8 +46,8 @@ class MyNotState:
 
 
 def test() -> None:
+    s = MyState(Player.ONE, Result.INPROGRESS)
 
-    s = MyState()  # Fails mypy if we replace this with MyNotState
-    n: Node = Node(s)
-
-    assert 43 == n.test()
+    n: Node[MyState]
+    n = Node(s)
+    i: int = n.test()

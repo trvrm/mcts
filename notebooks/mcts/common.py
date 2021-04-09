@@ -3,10 +3,10 @@ from enum import Enum
 # maybe this should be win/draw/inprogress, with a separate
 # winner field that can be none?
 class Result(str, Enum):
-    PLAYER1 = "PLAYER1"
-    PLAYER2 = "PLAYER2"
+    PLAYER1 = "PLAYER 1 WINS"
+    PLAYER2 = "PLAYER 2 WINS"
     DRAW = "DRAW"
-    INPROGRESS = "INPROGRESS"
+    INPROGRESS = "IN PROGRESS"
 
     def __repr__(self) -> str:
         return self.name
