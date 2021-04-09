@@ -11,7 +11,7 @@
 """
 
 import time
-from typing import Optional, List, Protocol, Any, Dict
+from typing import Optional, List, Protocol, Any, Dict, TypeVar, Generic
 from math import sqrt, log
 import random
 
@@ -19,6 +19,12 @@ from .common import Result, Player, other_player
 
 
 class StateProtocol(Protocol):
+    """
+    A game state class is any class that can provide a current player,
+    a current result, a list of available commands, and a
+    way of aquiring a new state by applying a command
+    """
+
     def apply(self, command: Any) -> "StateProtocol":
         ...
 
@@ -27,14 +33,18 @@ class StateProtocol(Protocol):
     commands: List
 
 
+StateType = TypeVar("StateType", bound=StateProtocol)
+
+
 class MCTSException(Exception):
     pass
 
 
-class Node:
+class Node(Generic[StateType]):
+
     "State is immutable, nodes are not"
 
-    def __init__(self, state: StateProtocol, parent: Optional["Node"] = None) -> None:
+    def __init__(self, state: StateType, parent: Optional["Node"] = None) -> None:
 
         assert parent is not self
         self.parent = parent
@@ -57,9 +67,8 @@ class Node:
         if len(self.children) < len(self.state.commands):
             return True
 
-        if any(child.playouts == 0 for command, child in self.children.items()):
-            # We always run a playout when we create a new node.
-            assert 0, str([child.playouts for command, child in self.children.items()])
+        # We always run a playout when we create a new node.
+        assert all(child.playouts > 0 for child in self.children.values())
 
         return False
 
@@ -99,7 +108,6 @@ class Node:
         # we can't go down any further, but this node can't be expanded.
         if len(self.state.commands) == 0:
             assert self.state.result != Result.INPROGRESS
-
             assert len(self.children) == 0
             return self
 

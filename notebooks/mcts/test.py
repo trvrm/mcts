@@ -1,6 +1,7 @@
 import time
 from .node import Node, mcts
 from .common import Result
+from . import tictactoe
 from .tictactoe import State, Command
 
 
@@ -46,8 +47,8 @@ def pick_move(root: Node, seconds: float) -> Command:
 
 def main() -> None:
 
-    s = State()
-    root = Node(s)
+    s = tictactoe.State()
+    root: Node[tictactoe.State] = Node(s)
 
     print(root.state)
     print("")
