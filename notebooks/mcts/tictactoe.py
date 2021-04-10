@@ -54,6 +54,8 @@ class Command:
         assert 0 <= self.i < SIZE, f"i must be between 0 and {SIZE-1}"
         assert 0 <= self.j < SIZE, f"j must be between 0 and {SIZE-1}"
 
+    def __repr__(self)->str:
+        return f"({self.i},{self.j})"
 
 # State classes should be treated as immutable
 class State:
