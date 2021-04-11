@@ -1,15 +1,3 @@
-"""
-    Enforcing the generic type rules here is turning out to be far harder than I 
-    expected.
-    
-    I want Node to be templated on a State type, 
-    and I want State to be required to define a Command type.
-    
-    I'm actually not sure that this is possible
-    
-    What if Node only knows about State, not about Command?
-"""
-
 import time
 from typing import Optional, List, Protocol, Any, Dict, TypeVar, Generic
 from math import sqrt, log
