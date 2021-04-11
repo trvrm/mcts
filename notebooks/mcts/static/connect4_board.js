@@ -29,23 +29,20 @@ Ractive.components.Connect4Board = Ractive.extend({
             
                 fill:red;
         }
-        .target.TWO:hover{
-            
-                fill:yellow;
-        }
+         
     `,    
  
-    template:` 
-        <h2>Player {{game.player}}</h2>
-        <h3>{{game.result}}</h3>
+    template:`  
+        
         <svg width="350" height="350" class="default">
         
         
-            {{#if (game.result=="IN PROGRESS")}}
+            {{#if (game.result=="INPROGRESS")}}
             
                 <rect class="board drop" width="350" height="40">
                 
                 </rect>
+                
                 {{#each game.board[0] as cell:i}}
                     <g transform="translate({{i*50}},0)">
                       <rect x="5" y="5" width="40" height="30" rx="5" 

@@ -11,46 +11,46 @@ def default_m() -> np.ndarray:
 SIZE = 4
 
 
-def _sub_result(m: np.ndarray) -> Result:
-    if any((m.sum(axis=1)) == SIZE):
-        return Result.PLAYER1
-    if any((m.sum(axis=0)) == SIZE):
-        return Result.PLAYER1
-    if m.trace() == SIZE:
-        return Result.PLAYER1
-    if np.fliplr(m).trace() == SIZE:
-        return Result.PLAYER1
+def diagonals_a(m):
+    for offset in range(-2,5):
+        d=m.diagonal(offset)
+        for l in range(0, len(d)-3):
+            yield(d[l:4+l])
 
-    if any((m.sum(axis=1)) == -SIZE):
-        return Result.PLAYER2
-    if any((m.sum(axis=0)) == -SIZE):
-        return Result.PLAYER2
-    if m.trace() == -SIZE:
-        return Result.PLAYER2
-    if np.fliplr(m).trace() == -SIZE:
-        return Result.PLAYER2
+def diagonals_b(m):
+    f=np.fliplr(m)
+    for offset in range(-2,5):
+        d=f.diagonal(offset)
+        for l in range(0, len(d)-3):
+            yield(d[l:4+l])
+def horizontals(m):
+    
+    # horizontals
+    for i in range(4):
+        for j in range(6):
+            yield m[j,i:i+4]
+def verticals(m):
+   
+    for i in range(7):
+        for j in range(3):
+            yield m[j:4+j,i]
+             
+def all_lines(m):
+    yield from diagonals_a(m)
+    yield from diagonals_b(m)
+    yield from horizontals(m)
+    yield from verticals(m)
+    
 
-    return Result.INPROGRESS
-
-
-def _result(m) -> Result:
-    """
-    We compute results by considering every possible
-    4x4 grid and seeing if _that_ has a line in it, using
-    the same algorithm as tic-tac-toe
-    """
-    for j in range(3):
-        for i in range(4):
-            sub = m[j : j + 4, i : i + 4]
-            assert sub.size == 16
-            assert sub.shape == (4, 4)
-            r = _sub_result(sub)
-            if r != Result.INPROGRESS:
-                return r
-
-    if not (m == 0).any():
-        return Result.DRAW
-        
+def _result(m)->Result:
+    # This is  3-4 times faster than my first attempt.
+    l=np.array(list(all_lines(m)))
+    
+    
+    
+    if any(l.sum(axis=1)==4):return Result.PLAYER1
+    if any(l.sum(axis=1)==-4):return Result.PLAYER2
+    if not (m == 0).any(): return Result.DRAW
     return Result.INPROGRESS
 
 
@@ -62,8 +62,10 @@ class Command:
         assert 0 <= self.column <= 6, "column must be between 0 and 6"
 
     def __repr__(self) -> str:
-        return f"({self.column})"
+        return f"{self.column}"
 
+
+ 
 
 class State:
     def __init__(self, m: Optional[np.ndarray] = None, player: Optional[Player] = None):
@@ -76,15 +78,18 @@ class State:
             assert player is not None
             self._m = m
             self.player = player
+         
         self.result = _result(self._m)
-
+        
         top_row = self._m[0]
-        if self.result==Result.INPROGRESS:
-            self.commands = [Command(i) for i, value in enumerate(top_row) if value == 0]
+        if self.result == Result.INPROGRESS:
+            self.commands = [
+                Command(i) for i, value in enumerate(top_row) if value == 0
+            ]
         else:
-            self.commands=[]
+            self.commands = []
 
-    def __repr__(self)->str:
+    def __repr__(self) -> str:
         return f"""
             {self._m}
             {self.player}
@@ -92,26 +97,22 @@ class State:
             {self.commands}
         """
 
-    def apply(self,command:Command)->"State":
+    def apply(self, command: Command) -> "State":
         if self.result != Result.INPROGRESS:
             raise GameOver()
 
         if command not in self.commands:
             raise Illegal()
-            
+
         m = self._m.copy()
         v = {Player.ONE: 1, Player.TWO: -1}[self.player]
-        
-        col = m[:,command.column]
 
-        assert col[0]==0
-        
-        j=[j for j, val in enumerate(col) if val==0][-1]
-        
-        col[j]=v
-        
+        col = m[:, command.column]
+
+        assert col[0] == 0
+
+        j = [j for j, val in enumerate(col) if val == 0][-1]
+
+        col[j] = v
+
         return State(m, other_player(self.player))
-        
-        
-        
-        

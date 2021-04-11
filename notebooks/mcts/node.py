@@ -100,7 +100,7 @@ class Node(Generic[StateType]):
     def expand(self) -> "Node":
         "create a new child state from this node"
 
-        if self.state.result!=Result.INPROGRESS:
+        if self.state.result != Result.INPROGRESS:
             print(self.state)
         assert self.state.result == Result.INPROGRESS
         assert len(self.state.commands) > 0
@@ -134,7 +134,14 @@ class Node(Generic[StateType]):
             return [best] + self.children[best].best_line()
         else:
             return []
-
+    
+    def best_line2(self)->List["Node"]:
+        if len(self.children):
+            best=self.best()
+            return [self] + self.children[best].best_line2()
+        else:
+            return [self]
+    
     def uct_score(self, parent_playouts: int) -> float:
         """
         UCT is 'Upper Confidence Bound Applied to Trees'.

@@ -24,6 +24,26 @@ const MainScreen = Ractive.extend({
                     {{#if current_game}}
                         <br>
                         <div class="has-text-centered">
+                        
+                            <h4>
+                                {{#if current_game.result=="PLAYER1"}}
+                                    You win!
+                                {{/if}}
+                                {{#if current_game.result=="PLAYER2"}}
+                                    You lose!
+                                {{/if}}
+                                {{#if current_game.result=="DRAW"}}
+                                    Draw
+                                {{/if}}
+                                {{#if current_game.result=="INPROGRESS"}}
+                                    {{#if current_game.player=="ONE"}}
+                                    Your turn
+                                    {{else}}
+                                    Thinking...
+                                    {{/if}}
+                                {{/if}}
+                            </h4>
+                        
                             {{#if current_game.name=="tictactoe"}}
                                 <TicTacToeBoard 
                                     ws={{ws}}

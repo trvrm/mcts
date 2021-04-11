@@ -41,16 +41,14 @@ Ractive.components.TicTacToeBoard = Ractive.extend({
          
     `,    
  
-    template:` aaa
-        <h2>Player {{game.player}}</h2>
-        <h3>{{game.result}}</h3>
+    template:` 
         <svg width="310" height="310" class="default">
             <g class="board">
                 
                 {{#each game.board as row:j}}
                     {{#each row as cell:i}}
                         <g transform="translate({{i*(300/game.size)}},{{j*300/game.size}})">
-                            {{#if (game.player=="ONE") & (game.result=="IN PROGRESS")}}
+                            {{#if (game.player=="ONE") & (game.result=="INPROGRESS")}}
                                 <rect 
                                     on-click="ws.send('tictactoe_move', j, i)"
                                     x="5"  y="5" rx="3" ry="3" width="{{270/game.size}}"  height="{{270/game.size}}" 
