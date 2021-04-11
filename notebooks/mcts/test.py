@@ -42,8 +42,8 @@ def pick_move(root: Node, seconds: float) -> Command:
         mcts(root)
 
     print(root)
-    
-    print("Best line:",root.best_line())
+
+    print("Best line:", root.best_line())
     return root.best()
 
 

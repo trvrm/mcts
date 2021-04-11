@@ -10,12 +10,18 @@ Ractive.components.GameList = Ractive.extend({
     template:`
     
  
-<button class="button is-info is-small is-outlined is-rounded" on-click="ws.send('new_game','bot')">
-    New game vs bot
+<button class="button is-info is-small is-outlined is-rounded" on-click="ws.send('new_game','tictactoe')">
+    Play TicTacToe
 </button>
  
     
-        
+
+<button class="button is-info is-small is-outlined is-rounded" on-click="ws.send('new_game','connect4')">
+   Play Connect4
+</button>
+
+   
+       
 `
 });
     

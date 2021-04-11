@@ -17,7 +17,9 @@ import random
 
 from .common import Result, Player, other_player
 
-Command=Any
+Command = Any
+
+
 class StateProtocol(Protocol):
     """
     A game state class is any class that can provide a current player,
@@ -65,7 +67,6 @@ class Node(Generic[StateType]):
 
         return False
 
-     
     @property
     def ratio(self) -> float:
         if self.wins == 0:
@@ -99,6 +100,8 @@ class Node(Generic[StateType]):
     def expand(self) -> "Node":
         "create a new child state from this node"
 
+        if self.state.result!=Result.INPROGRESS:
+            print(self.state)
         assert self.state.result == Result.INPROGRESS
         assert len(self.state.commands) > 0
         assert self.is_leaf
@@ -125,14 +128,13 @@ class Node(Generic[StateType]):
         commands = self.children.keys()
         return max(commands, key=lambda command: self.children[command].playouts)
 
-    
-    def best_line(self)->List:
+    def best_line(self) -> List:
         if len(self.children):
-            best=self.best()
+            best = self.best()
             return [best] + self.children[best].best_line()
         else:
             return []
-        
+
     def uct_score(self, parent_playouts: int) -> float:
         """
         UCT is 'Upper Confidence Bound Applied to Trees'.
@@ -199,8 +201,8 @@ def select(node: Node) -> List[Node]:
     return node.select()
 
 
-def mcts(root: Node) ->None:
-    assert root.state.result==Result.INPROGRESS
+def mcts(root: Node) -> None:
+    assert root.state.result == Result.INPROGRESS
     path = select(root)
     path = expand(path)
     result = playout(path[-1])

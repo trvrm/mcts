@@ -24,10 +24,19 @@ const MainScreen = Ractive.extend({
                     {{#if current_game}}
                         <br>
                         <div class="has-text-centered">
-                            <TicTacToeBoard 
-                                ws={{ws}}
-                                game={{current_game}} 
-                            />
+                            {{#if current_game.name=="tictactoe"}}
+                                <TicTacToeBoard 
+                                    ws={{ws}}
+                                    game={{current_game}} 
+                                />
+                            
+                            {{elseif current_game.name=="connect4"}}
+                                <Connect4Board 
+                                    ws={{ws}}
+                                    game={{current_game}} 
+                                />
+                            {{/if}}
+                            
                         </div>
                     {{/if}}
                 </div>

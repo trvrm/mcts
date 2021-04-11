@@ -38,20 +38,7 @@ Ractive.components.TicTacToeBoard = Ractive.extend({
         .empty.highlighted:hover{
             fill:rgba(240,240,240,0.8);
         }
-        .wall{
-            fill: #eedab6;
-        }
-        .wallslot{
-            fill: #000000;
-        }.
-        
-        .piece{
-            
-        }
-        .piece.selected{
-            stroke:yellow;
-            stroke-width:4;
-        }
+         
     `,    
  
     template:` aaa
@@ -65,7 +52,7 @@ Ractive.components.TicTacToeBoard = Ractive.extend({
                         <g transform="translate({{i*(300/game.size)}},{{j*300/game.size}})">
                             {{#if (game.player=="ONE") & (game.result=="IN PROGRESS")}}
                                 <rect 
-                                    on-click="ws.send('play_move',game.name,j, i)"
+                                    on-click="ws.send('tictactoe_move', j, i)"
                                     x="5"  y="5" rx="3" ry="3" width="{{270/game.size}}"  height="{{270/game.size}}" 
                                     class="square   highlighted {{cell}}" >
                                 </rect>

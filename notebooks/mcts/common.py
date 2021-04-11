@@ -22,3 +22,12 @@ class Player(str, Enum):
 
 def other_player(player: Player) -> Player:
     return {Player.ONE: Player.TWO, Player.TWO: Player.ONE}[player]
+
+
+class Illegal(Exception):
+    pass
+
+
+class GameOver(Exception):
+    pass
+
